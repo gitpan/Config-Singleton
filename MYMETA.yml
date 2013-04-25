@@ -6,10 +6,9 @@ build_requires:
   ExtUtils::MakeMaker: 6.59
   Test::More: 0
 configure_requires:
-  ExtUtils::MakeMaker: 6.59
-distribution_type: module
-dynamic_config: 1
-generated_by: 'Module::Install version 1.06'
+  ExtUtils::MakeMaker: 0
+dynamic_config: 0
+generated_by: 'ExtUtils::MakeMaker version 6.6501, CPAN::Meta::Converter version 2.130880'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -17,9 +16,8 @@ meta-spec:
 name: Config-Singleton
 no_index:
   directory:
-    - inc
     - t
-    - xt
+    - inc
 requires:
   Cwd: 0
   File::Basename: 0
@@ -27,7 +25,5 @@ requires:
   File::Spec: 0
   Sub::Exporter: 0.972
   YAML::Syck: 0
-  perl: 5.6.0
-resources:
-  license: http://dev.perl.org/licenses/
+  perl: 5.006
 version: 0.002
