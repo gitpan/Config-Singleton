@@ -1,21 +1,77 @@
-#!perl
+
 use strict;
 use warnings;
-use inc::Module::Install;
 
-author   'John Cappiello <jcap@cpan.org>';
-name     'Config-Singleton';
-all_from 'lib/Config/Singleton.pm';
+use 5.006;
 
-build_requires 'Test::More' => 0;
+use ExtUtils::MakeMaker 6.30;
 
-requires 'Cwd'            => 0; # core since 5
-requires 'File::Basename' => 0; # core since 5
-requires 'File::HomeDir'  => 0.60;  # the "modern" interface
-requires 'File::Spec'     => 0; # core since 5.00405
-requires 'Sub::Exporter'  => 0.972; # for name-ref for generator
-requires 'YAML::Syck'     => 0; # minimum unknown
 
-author_tests 'xt';
 
-WriteAll;
+my %WriteMakefileArgs = (
+  "ABSTRACT" => "one place for your app's configuration",
+  "AUTHOR" => "Ricardo SIGNES <rjbs\@cpan.org>, John Cappiello <jcap\@cpan.org>",
+  "BUILD_REQUIRES" => {},
+  "CONFIGURE_REQUIRES" => {
+    "ExtUtils::MakeMaker" => "6.30"
+  },
+  "DISTNAME" => "Config-Singleton",
+  "EXE_FILES" => [],
+  "LICENSE" => "perl",
+  "NAME" => "Config::Singleton",
+  "PREREQ_PM" => {
+    "Cwd" => 0,
+    "File::Basename" => 0,
+    "File::HomeDir" => 0,
+    "File::Spec" => 0,
+    "Sub::Exporter" => 0,
+    "YAML::XS" => 0,
+    "strict" => 0,
+    "warnings" => 0
+  },
+  "TEST_REQUIRES" => {
+    "File::Find" => 0,
+    "File::Temp" => 0,
+    "Test::More" => "0.96",
+    "lib" => 0
+  },
+  "VERSION" => "0.003",
+  "test" => {
+    "TESTS" => "t/*.t"
+  }
+);
+
+
+unless ( eval { ExtUtils::MakeMaker->VERSION(6.63_03) } ) {
+  my $tr = delete $WriteMakefileArgs{TEST_REQUIRES};
+  my $br = $WriteMakefileArgs{BUILD_REQUIRES};
+  for my $mod ( keys %$tr ) {
+    if ( exists $br->{$mod} ) {
+      $br->{$mod} = $tr->{$mod} if $tr->{$mod} > $br->{$mod};
+    }
+    else {
+      $br->{$mod} = $tr->{$mod};
+    }
+  }
+}
+
+unless ( eval { ExtUtils::MakeMaker->VERSION(6.56) } ) {
+  my $br = delete $WriteMakefileArgs{BUILD_REQUIRES};
+  my $pp = $WriteMakefileArgs{PREREQ_PM};
+  for my $mod ( keys %$br ) {
+    if ( exists $pp->{$mod} ) {
+      $pp->{$mod} = $br->{$mod} if $br->{$mod} > $pp->{$mod};
+    }
+    else {
+      $pp->{$mod} = $br->{$mod};
+    }
+  }
+}
+
+delete $WriteMakefileArgs{CONFIGURE_REQUIRES}
+  unless eval { ExtUtils::MakeMaker->VERSION(6.52) };
+
+WriteMakefile(%WriteMakefileArgs);
+
+
+
