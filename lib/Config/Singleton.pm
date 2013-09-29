@@ -3,7 +3,7 @@ use warnings;
 use strict;
 package Config::Singleton;
 {
-  $Config::Singleton::VERSION = '0.003';
+  $Config::Singleton::VERSION = '0.004';
 }
 # ABSTRACT: one place for your app's configuration
 
@@ -226,7 +226,7 @@ Config::Singleton - one place for your app's configuration
 
 =head1 VERSION
 
-version 0.003
+version 0.004
 
 =head1 SYNOPSIS
 
