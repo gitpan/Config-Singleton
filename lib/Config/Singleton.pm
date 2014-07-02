@@ -2,11 +2,8 @@ use 5.006;
 use warnings;
 use strict;
 package Config::Singleton;
-{
-  $Config::Singleton::VERSION = '0.004';
-}
 # ABSTRACT: one place for your app's configuration
-
+$Config::Singleton::VERSION = '0.005';
 use Cwd ();
 use File::Basename ();
 use File::HomeDir ();
@@ -17,6 +14,144 @@ use Sub::Exporter -setup => {
   groups => [ setup => \'_build_config_methods' ],
 };
 
+#pod =head1 SYNOPSIS
+#pod
+#pod   package YourApplication::Config;
+#pod
+#pod   use Config::Singleton -setup => {
+#pod     filename => 'something.yaml',
+#pod     template => {
+#pod       foo => undef,
+#pod       bar => 1024,
+#pod       qux => [ 1, 2, 3],
+#pod     },
+#pod   };
+#pod
+#pod Elsewhere...
+#pod
+#pod   use YourApplication::Config 'my_instance_config.yml';
+#pod
+#pod   my $foo = YourApplication::Config->foo;
+#pod
+#pod =head1 DESCRIPTION
+#pod
+#pod Config::Singleton provides a base class for access to configuration data for
+#pod your app. The basic implementation stores its configuration in YAML in a text
+#pod file found in all the usual places. By default, Config::Singleton looks for
+#pod myapp.yml, but an alternate filename may be passed when using the module.
+#pod
+#pod This module was derived from L<Rubric::Config|Rubric::Config>.
+#pod
+#pod =head1 USING APP::CONFIG
+#pod
+#pod The L</SYNOPSIS> section, above, demonstrates an example of almost every
+#pod feature of Config::Singleton  It's a very simple module with a very small
+#pod interface.
+#pod
+#pod It is not a base class.  It is a utility for setting up a class that stores
+#pod loaded configuration data.  You just need to C<use> the module like this:
+#pod
+#pod   package Your::Config;
+#pod
+#pod   use Config::Singleton -setup => {
+#pod     filename => 'your_program.yaml',
+#pod     template => {
+#pod       username => undef,
+#pod       hostname => undef,
+#pod       logfile  => undef,
+#pod       facility => 'local1',
+#pod       path     => [ qw(/var/spool /tmp/jobs) ],
+#pod     },
+#pod   };
+#pod
+#pod When another module uses Your::Config, F<your_program.yaml> will be loaded and
+#pod its contents will be merged over the defaults given by the C<template>
+#pod argument.  Each entry in the template hashref becomes a method on
+#pod YourProgram::Config, which returns either the value from the config file or the
+#pod value from the template, if no entry exists in the config file.
+#pod
+#pod So, assuming that F<your_program.yaml> looks like this:
+#pod
+#pod   ---
+#pod   username: rjbs
+#pod   hostname: fulfill.example.com
+#pod
+#pod   path:
+#pod     - /var/spool/jobs
+#pod     - /home/rjbs/spool/jobs
+#pod
+#pod Then these are the results of method calls on Your::Config:
+#pod
+#pod   Your::Config->username; # 'rjbs'
+#pod
+#pod   Your::Config->logfile;  # undef
+#pod
+#pod   Your::Config->facility; # 'local0'
+#pod
+#pod   Your::Config->path;     # qw(/var/spool/jobs  /home/rjbs/spool/jobs)
+#pod
+#pod =head2 Specifying a Config File
+#pod
+#pod Config::Singleton finds a config file via a series of DWIM-my steps that are
+#pod probably
+#pod more complicated to explain than they are to understand.
+#pod
+#pod The F<filename> argument given when using Config::Singleton is the name of the
+#pod file that will, by default, be loaded to find configuration.  It may be
+#pod absolute or relative.  If not given, it's computed as follows:  the "module
+#pod base name" is made by dropping the last part of the class name, if it's
+#pod multi-part, and double colons become underscores.  In other words
+#pod "Your::Thing::Config" becomes "Your_Thing."  If the environment variable
+#pod YOUR_THING_CONFIG_FILE is set, that will be used as the default.  If not,
+#pod F<your_thing.yaml> will be used.
+#pod
+#pod The named file will be the source of configuration for the global (class
+#pod method) configuration.  It can be overridden, however, when using the config
+#pod module.  For example, after using the following code:
+#pod
+#pod   use Your::Thing::Config 'special.yaml';
+#pod
+#pod ...the default name will have been replaced with F<special.yaml>.  If the
+#pod previous default file has already been loaded, this will throw an exception.
+#pod Using the module without specifying a filename will defer loading of the
+#pod configuration file until it's needed.  To force it to be loaded without setting
+#pod an explicit filename, pass C<-load> as the filename.  (All names beginning
+#pod with a dash are reserved.)
+#pod
+#pod If the filename is relative, the configuration file is found by looking for the
+#pod file name in the following paths (F<LOC> is the location of the program being
+#pod run, found via C<$0>):
+#pod
+#pod   ./
+#pod   ../
+#pod   LOC/
+#pod   LOC/../etc/
+#pod   ~/
+#pod   /etc/
+#pod
+#pod You can change the paths checked by providing a F<path> argument, as an
+#pod arrayref, in the setup arguments.
+#pod
+#pod =head2 Alternate Configuration Objects
+#pod
+#pod Although it's generally preferable to begin your program by forcing the loading
+#pod of a configuration file and then using the global configuration, it's possible
+#pod to have multiple Your::Thing::Config configurations loaded by instantiating
+#pod objects of that class, like this:
+#pod
+#pod   my $config_obj = Your::Thing::Config->new($filename);
+#pod
+#pod The named file is found via the same path resolution (if it's relative) as
+#pod described above.
+#pod
+#pod =head1 METHODS
+#pod
+#pod Config::Singleton doesn't actually have any real public methods of its own.
+#pod Its methods are all private, and serve to power its C<import> routine.  These
+#pod will probably be exposed in the future to allow for subclassing of
+#pod Config::Singleton, but in the meantime, don't rely on them.
+#pod
+#pod =cut
 
 # Initialize all the methods for our new class.
 # this is a Sub::Exporter group generator
@@ -89,7 +224,8 @@ sub _build_default_filename_methods {
 
   my $get_default_filename = sub {
     my ($self) = @_;
-    return $set_default ||= $app_config->_default_filename_for_class($self);
+    return $set_default ||= $arg->{filename}
+                        ||  $app_config->_default_filename_for_class($self);
   };
 
   my $set_default_filename = sub {
@@ -213,6 +349,21 @@ sub _merge_data {
   return $merged;
 }
 
+#pod =head1 TODO
+#pod
+#pod =for :list
+#pod * a ->new method to allow loading different configs
+#pod * a way to tell Your::Config, with no explicit filename, to die unless a filename was specified by an earlier use
+#pod
+#pod =head1 ACKNOWLEDGEMENTS
+#pod
+#pod Ricardo SIGNES not only wrote the inspiration for this in Rubric::Config, but
+#pod he also basically wrote the majority of the implementation here, and even
+#pod provided extensions of what he knew I wanted it to do, even when I said I
+#pod didn't need that yet. In the end it ended up being extremely elegant, which I
+#pod can say without being boastful, because he wrote the elegant bits.
+#pod
+#pod =cut
 
 1;
 
@@ -220,13 +371,15 @@ __END__
 
 =pod
 
+=encoding UTF-8
+
 =head1 NAME
 
 Config::Singleton - one place for your app's configuration
 
 =head1 VERSION
 
-version 0.004
+version 0.005
 
 =head1 SYNOPSIS
 
